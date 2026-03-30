@@ -90,13 +90,8 @@ def build_training_dataset(csv_path, output_jsonl_path, split_minutes=60):
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="将微信导出 CSV 转为训练用 JSONL（OpenAI 角色字段）")
-    parser.add_argument("-i", "--input", required=True, help="输入 CSV 路径")
-    parser.add_argument("-o", "--output", required=True, help="输出 JSONL 路径")
-    parser.add_argument(
-        "--split-minutes",
-        type=int,
-        default=60,
-        help="超过该间隔（分钟）则视为新会话，默认 60",
-    )
+    parser.add_argument("-i", "--input", default="data/私聊_周珂帆.csv", help="输入 CSV 路径")
+    parser.add_argument("-o", "--output", default="data/周珂帆.jsonl", help="输出 JSONL 路径")
+    parser.add_argument("--split-minutes", type=int, default=60, help="超过该间隔（分钟）则视为新会话，默认 60")
     args = parser.parse_args()
     build_training_dataset(args.input, args.output, args.split_minutes)

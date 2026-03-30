@@ -36,16 +36,16 @@ pip install unsloth transformers trl datasets peft accelerate sentencepiece prot
 ### 3. 处理数据
 
 ```bash
-python data_processing.py --input data/私聊_刘雨欣.csv --output data/刘雨欣.jsonl
+python data_processing.py --input data/xxx.csv --output data/xxx.jsonl
 # 可选：会话切分间隔（分钟），默认 60
-# python data_processing.py -i data/私聊_xxx.csv -o data/xxx.jsonl --split-minutes 60
+# python data_processing.py -i data/xxx.csv -o data/xxx.jsonl --split-minutes 60
 ```
 
 ### 4. 训练模型
 ```bash
-python train.py --model models/Qwen3-8B --dataset data/刘雨欣.jsonl
+python train.py --model models/Qwen3-8B --dataset data/xxx.jsonl
 # 可选：checkpoint / LoRA / GGUF 输出位置
-# python train.py -m models/Qwen3-8B -d data/刘雨欣.jsonl --output-dir checkpoints/outputs --lora-dir checkpoints/lora --gguf checkpoints/gguf
+# python train.py -m models/Qwen3-8B -d data/xxx.jsonl --output-dir checkpoints/outputs --lora-dir checkpoints/lora --gguf checkpoints/gguf
 ```
 
 ## 二、流程介绍
