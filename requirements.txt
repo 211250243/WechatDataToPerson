@@ -1,0 +1,23 @@
+--extra-index-url https://download.pytorch.org/whl/cu128
+
+# === 1. PyTorch 核心底座 ===
+# 严格锁定 2.10.0，满足 Unsloth 的上限限制，同时结合 cu128 唤醒 50 系显卡
+torch==2.10.0
+torchvision==0.25.0
+torchaudio==2.10.0
+
+# === 2. 算子加速与量化组件 ===
+xformers
+bitsandbytes>=0.43.0
+
+# === 3. 大模型微调核心生态 ===
+unsloth
+transformers
+trl
+datasets
+peft
+accelerate
+
+# === 4. 模型导出与其他依赖 ===
+sentencepiece
+protobuf

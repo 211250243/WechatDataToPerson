@@ -1,0 +1,6 @@
+models/
+checkpoints/
+data/
+unsloth_compiled_cache/
+.idea/
+.venv/
