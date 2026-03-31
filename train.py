@@ -31,6 +31,9 @@ parser.add_argument("-d", "--dataset", default="data/周珂帆.jsonl", help="训
 parser.add_argument("-o", "--output", default="checkpoints/outputs", help="训练 checkpoint 目录")
 parser.add_argument("-l", "--lora", default="checkpoints/lora", help="LoRA 输出目录")
 parser.add_argument("-g", "--gguf", default="checkpoints/gguf", help="GGUF 导出路径前缀")
+parser.add_argument("-e", "--epochs", type=float, default=3.0, help="训练轮数，风格不够可试 4～5")
+parser.add_argument("--lora-r", type=int, default=32, dest="lora_r", help="LoRA 秩，越大越能拟合口癖（更吃显存）")
+parser.add_argument("--lr", type=float, default=2e-4, help="学习率，epoch 增多时可试 1.5e-4")
 args = parser.parse_args()
 MODEL_PATH = args.model
 DATASET_PATH = args.dataset
@@ -57,10 +60,10 @@ print("🧩 [2/6] 正在注入 LoRA 适配器...")
 # ==========================================
 model = FastLanguageModel.get_peft_model(
     model,
-    r = 16, # 秩，16 适合学习个人的说话语气和口癖
+    r = args.lora_r,
     target_modules = ["q_proj", "k_proj", "v_proj", "o_proj",
                       "gate_proj", "up_proj", "down_proj",],
-    lora_alpha = 16,
+    lora_alpha = args.lora_r * 2,
     lora_dropout = 0, 
     bias = "none",
     use_gradient_checkpointing = "unsloth", # Unsloth 的独家显存优化技术，必开
@@ -104,8 +107,8 @@ trainer = SFTTrainer(
         per_device_train_batch_size = 1,  # 📉 显存护航：降为 1 避免 5070 Ti 溢出
         gradient_accumulation_steps = 8,  # 📈 保持总 batch size 依然为 8
         warmup_steps = 10,                # 预热步数，防止训练初期 Loss 震荡
-        num_train_epochs = 3,             # 跑 3 个 Epoch 通常能较好地掌握说话风格而不过拟合
-        learning_rate = 2e-4,             # 推荐的 QLoRA 学习率
+        num_train_epochs = args.epochs,
+        learning_rate = args.lr,
         fp16 = False,                     # 🪄 补丁 4：50 系显卡直接开启高级 BF16
         bf16 = True,
         logging_steps = 5,                # 每 5 步打印一次 Loss

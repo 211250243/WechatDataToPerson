@@ -46,7 +46,7 @@ python data_processing.py --input data/xxx.csv --output data/xxx.jsonl
 ```bash
 python train.py --model models/Qwen3-8B --dataset data/xxx.jsonl
 # 可选：checkpoint / LoRA / GGUF 输出位置
-# python train.py -m models/Qwen3-8B -d data/xxx.jsonl -o checkpoints/outputs -l checkpoints/lora -g checkpoints/gguf
+# python train.py -m models/Qwen3-8B -d data/xxx.jsonl -o checkpoints/outputs -l checkpoints/lora -g checkpoints/gguf -e 3 --lora-r 32 --lr 2e-4
 ```
 
 如果模型训练成功，导出gguf模型失败，则使用以下命令单独导出：
