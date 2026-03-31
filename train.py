@@ -1,11 +1,15 @@
 import os
 import argparse
 # ==========================================
-# 🪄 补丁 1：缓解 12G 显存碎片化 (OOM 防御)
+# 🪄 补丁 1：强制 Python 采用 UTF-8 编码，彻底封杀子进程终端输出引发的 GBK 乱码崩溃
+# ==========================================
+os.environ["PYTHONIOENCODING"] = "utf-8"
+# ==========================================
+# 🪄 补丁 2：缓解 12G 显存碎片化 (OOM 防御)
 # ==========================================
 os.environ["PYTORCH_ALLOC_CONF"] = "expandable_segments:True"
 # ==========================================
-# 🪄 补丁 2：解决 PyTorch 2.10 与 Triton 3.6 的断层
+# 🪄 补丁 3：解决 PyTorch 2.10 与 Triton 3.6 的断层
 # 凭空捏造被删除的类，完美骗过 PyTorch 编译器，让 5070 Ti 满血运行
 # ==========================================
 import triton
@@ -17,7 +21,6 @@ from unsloth import FastLanguageModel
 from datasets import load_dataset
 from trl import SFTTrainer
 from transformers import TrainingArguments
-from unsloth.chat_templates import get_chat_template
 
 # ==========================================
 # 1. 基础参数与路径配置（命令行覆盖；未传则用默认）
@@ -25,14 +28,14 @@ from unsloth.chat_templates import get_chat_template
 parser = argparse.ArgumentParser()
 parser.add_argument("-m", "--model", default="models/Qwen3-8B", help="本地模型目录")
 parser.add_argument("-d", "--dataset", default="data/周珂帆.jsonl", help="训练用 JSONL")
-parser.add_argument("--output-dir", default="checkpoints/outputs", help="训练 checkpoint 目录")
-parser.add_argument("--lora-dir", default="checkpoints/lora", help="LoRA 输出目录")
-parser.add_argument("--gguf", default="checkpoints/gguf", help="GGUF 导出路径前缀")
+parser.add_argument("-o", "--output", default="checkpoints/outputs", help="训练 checkpoint 目录")
+parser.add_argument("-l", "--lora", default="checkpoints/lora", help="LoRA 输出目录")
+parser.add_argument("-g", "--gguf", default="checkpoints/gguf", help="GGUF 导出路径前缀")
 args = parser.parse_args()
 MODEL_PATH = args.model
 DATASET_PATH = args.dataset
-OUTPUT_DIR = args.output_dir
-FINAL_LORA_DIR = args.lora_dir
+OUTPUT_DIR = args.output
+FINAL_LORA_DIR = args.lora
 GGUF_EXPORT_NAME = args.gguf
 
 MAX_SEQ_LENGTH = 2048 # 12G 显存的黄金分割点，足以覆盖绝大多数微信对话上下文
@@ -68,18 +71,18 @@ print("📚 [3/6] 正在处理与格式化数据集...")
 # ==========================================
 # 4. 数据集处理与 Chat Template 应用
 # ==========================================
-# 强制使用 Qwen 的对话模板
-tokenizer = get_chat_template(
-    tokenizer,
-    chat_template = "qwen3", 
-)
+# 直接使用 Qwen3 原生 chat template，不做覆盖，避免训练/推理模板不一致
+# 通过 enable_thinking=False 关闭思考链，让微调模型直接生成回复
 
 def formatting_prompts_func(examples):
-    """
-    将对话数据转换为模型可理解的格式
-    """
     convos = examples["conversations"]
-    texts = [tokenizer.apply_chat_template(convo, tokenize=False, add_generation_prompt=False) for convo in convos]
+    texts = [
+        tokenizer.apply_chat_template(
+            convo, tokenize=False, add_generation_prompt=False,
+            enable_thinking=False,
+        )
+        for convo in convos
+    ]
     return { "text" : texts }
 
 dataset = load_dataset("json", data_files=DATASET_PATH, split="train")

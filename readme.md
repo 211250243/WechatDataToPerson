@@ -41,12 +41,54 @@ python data_processing.py --input data/xxx.csv --output data/xxx.jsonl
 # python data_processing.py -i data/xxx.csv -o data/xxx.jsonl --split-minutes 60
 ```
 
-### 4. 训练模型
+### 4. 训练、导出模型
+
 ```bash
 python train.py --model models/Qwen3-8B --dataset data/xxx.jsonl
 # 可选：checkpoint / LoRA / GGUF 输出位置
-# python train.py -m models/Qwen3-8B -d data/xxx.jsonl --output-dir checkpoints/outputs --lora-dir checkpoints/lora --gguf checkpoints/gguf
+# python train.py -m models/Qwen3-8B -d data/xxx.jsonl -o checkpoints/outputs -l checkpoints/lora -g checkpoints/gguf
 ```
+
+如果模型训练成功，导出gguf模型失败，则使用以下命令单独导出：
+
+```bash
+python export_gguf.py -l checkpoints/lora -g checkpoints/gguf
+```
+
+如果单独导出gguf遇到问题，如 llama-quantize.exe 执行失败，需手动编译 llama.cpp
+
+1. 去官网下载 CMake 的 Windows 安装包：https://cmake.org/download/ （选择 cmake-xxx-windows-x86_64.msi）。
+2. 下载 Visual Studio Build Tools（微软官方免费的纯编译工具）：https://www.google.com/search?q=https://aka.ms/vs/17/release/vs_BuildTools.exe
+  * 勾选“使用 C++ 的桌面开发” (Desktop development with C++)。
+3. 重启
+4. 编译 llama.cpp
+```bash
+# 1. 删除旧的损坏 llama.cpp 文件
+Remove-Item -Recurse -Force "C:\Users\20960\.unsloth\llama.cpp"
+# 2. 重新克隆完整源码（递归下载子模块）
+git clone --recursive https://github.com/ggerganov/llama.cpp "C:\Users\20960\.unsloth\llama.cpp"
+# 3. 进入目录
+cd "C:\Users\20960\.unsloth\llama.cpp"
+# 4. CMake 配置项目
+cmake -S . -B build -DBUILD_SHARED_LIBS=OFF
+# 5. 编译 Release 版本（等待5-10分钟，出现 Build succeeded 即成功）
+cmake --build build --config Release
+```
+
+### 5. 配置、部署模型
+
+在 `Modelfile` 文件中指定模型路径、配置系统提示词。然后在 Ollama 中注册并打包虚拟人。
+
+```bash
+ollama create xxx -f Modelfile
+```
+
+### 6. 唤醒对话
+
+```bash
+ollama run xxx
+```
+
 
 ## 二、流程介绍
 
@@ -54,16 +96,16 @@ python train.py --model models/Qwen3-8B --dataset data/xxx.jsonl
 
 使用开源项目 WeFlow / WeClone / WeChatMsg(MemoTrace) / WechatExporter 导出微信聊天记录（csv格式）。在 ModelScope / HuggingFace 下载 Qwen3-8B 模型。
 
-### 第一步：将微信 CSV 转换为训练数据 (ShareGPT 格式)
-微信导出的一般是流水账式的 CSV，而大模型微调最常用的是 **ShareGPT 格式**的 JSONL 文件。你需要写一个简单的 Python 脚本，将你（或其他发送者）的话作为 `human`，将你想训练的“虚拟人物”的话作为 `gpt`。
+### 第一步：将微信 CSV 转换为训练数据 (OpenAI 格式)
+微信导出的一般是流水账式的 CSV，而大模型微调最常用的是 **OpenAI 格式**的 JSONL 文件。你需要写一个简单的 Python 脚本，将你（或其他发送者）的话作为 `user`，将你想训练的“虚拟人物”的话作为 `assistant`。
 
 **目标 JSONL 格式示例：**
 ```json
 [
   {
     "conversations": [
-      { "from": "human", "value": "今天晚上吃什么？" },
-      { "from": "gpt", "value": "老样子，去吃那家牛肉面吧，我都馋了！" }
+      {"role": "user", "content": "你好，我是xxx。"},
+      {"role": "assistant", "content": "你好，我是xxx。"},
     ]
   }
 ]
@@ -81,44 +123,6 @@ Unsloth 最强大的功能之一就是原生支持直接导出给 Ollama 用的 
 
 ### 第四步：使用 Ollama 本地部署并注入灵魂
 
-现在，将微调好的模型放入 Ollama 中，并编写一个系统提示词（System Prompt）来固定它的人设。
-
-1. **创建 Modelfile：**
-   在你存放 GGUF 文件的目录下，新建一个无后缀的文件，命名为 `Modelfile`，填入以下内容：
-
-```text
-# 指向你的 GGUF 文件路径
-FROM ./unsloth.Q4_K_M.gguf
-
-# 设置生成参数，让语气更自然
-PARAMETER temperature 0.7
-PARAMETER top_p 0.9
-
-# 设置系统提示词（赋予虚拟人物灵魂）
-SYSTEM """
-你是 [虚拟人物的名字]。你的说话风格是 [例如：幽默、喜欢用感叹号、经常怼人但心地善良]。
-请严格按照你以往的微信聊天习惯来回答我的问题。不要表现得像一个 AI，不要说“我是人工智能”之类的话。
-"""
-
-# 设定对话模板 (匹配 Qwen 格式)
-TEMPLATE """{{ if .System }}<|im_start|>system
-{{ .System }}<|im_end|>
-{{ end }}{{ if .Prompt }}<|im_start|>user
-{{ .Prompt }}<|im_end|>
-{{ end }}<|im_start|>assistant
-{{ .Response }}<|im_end|>
-"""
-```
-
-2. **构建 Ollama 模型：**
-   打开终端，运行：
-   ```bash
-   ollama create my_wechat_bot -f Modelfile
-   ```
-
-3. **开始聊天！**
-   ```bash
-   ollama run my_wechat_bot
-   ```
+现在，将微调好的模型放入 Ollama 中，并编写一个系统提示词（System Prompt）来固定它的人设。然后构建 Ollama 模型，运行。
 
 ---

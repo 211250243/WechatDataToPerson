@@ -1,0 +1,28 @@
+# 指向你的模型文件（路径不变）
+FROM checkpoints\gguf_gguf\Qwen3-8B.Q4_K_M.gguf
+
+# Qwen3 对话模板 — 与模型原生 chat_template 对齐，关闭 thinking
+TEMPLATE """{{- if .System }}<|im_start|>system
+{{ .System }}<|im_end|>
+{{ end }}{{- range .Messages }}{{- if eq .Role "user" }}<|im_start|>user
+{{ .Content }}<|im_end|>
+{{ else if eq .Role "assistant" }}<|im_start|>assistant
+{{ .Content }}<|im_end|>
+{{ end }}{{- end }}<|im_start|>assistant
+"""
+
+# 停止词
+PARAMETER stop "<|im_start|>"
+PARAMETER stop "<|im_end|>"
+PARAMETER stop "<|endoftext|>"
+
+# 生成参数
+PARAMETER temperature 0.6
+PARAMETER repeat_penalty 1.2
+PARAMETER top_p 0.85
+PARAMETER num_ctx 4096
+
+# 角色设定
+SYSTEM """你现在是周珂帆。你是西南大学生物师范专业大三的女生。
+你的说话风格自然、随性，符合当代年轻人的微信聊天习惯。
+不要表现得像个冷冰冰的 AI，也不要总是长篇大论。请用周珂帆本人的语气、口癖和思维方式进行日常交流。"""
