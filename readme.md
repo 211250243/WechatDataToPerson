@@ -8,6 +8,29 @@
 
 ## 一、使用说明
 
+```bash
+python train.py -d data/刘雨欣.jsonl -l checkpoints/lora_liu -g checkpoints/gguf_liu --lora-r 8 --epochs 1 --lr 1e-4
+```
+
+所有指令：
+
+```bash
+# 配置环境，下载模型
+python -m venv venv
+source venv/bin/activate
+pip install modelscope
+modelscope download --model Qwen/Qwen3-8B --local_dir ./models/Qwen3-8B
+pip install -r requirements.txt
+# 处理数据，训练模型
+python data_processing.py --input data/xxx.csv --output data/xxx.jsonl
+python train.py --model models/Qwen3-8B --dataset data/xxx.jsonl
+python export_gguf.py -l checkpoints/lora -g checkpoints/gguf
+# 部署模型，唤醒对话
+ollama create xxx -f Modelfile
+ollama run xxx
+ollama rm xxx
+```
+
 ### 1. 导出数据并下载模型
 
 使用开源项目 WeFlow / WeClone / WeChatMsg(MemoTrace) / WechatExporter 导出微信聊天记录（csv格式）。
